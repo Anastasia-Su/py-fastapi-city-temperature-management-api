@@ -1,4 +1,5 @@
 import httpx
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,10 +10,27 @@ from temperature.utils import create_temp_entries
 from fastapi.responses import JSONResponse
 
 
-async def get_temp_list(db: AsyncSession):
+async def get_temp_list(db: AsyncSession, city_id: int | None = None):
     query = select(temperature_models.DbTemperature)
+    if city_id is not None:
+        query = query.filter(temperature_models.DbTemperature.city_id == city_id)
+
     temp_list = await db.execute(query)
     return temp_list.scalars().all()
+
+
+async def get_temp_detail(db: AsyncSession, temperature_id: int):
+    query = select(temperature_models.DbTemperature).filter(
+        temperature_models.DbTemperature.id == temperature_id
+    )
+    result = await db.execute(query)
+    temp = result.scalars().first()
+    if temp:
+        return temp
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Temperature with id {temperature_id} not found",
+    )
 
 
 async def populate_temp_db(db: AsyncSession):
@@ -41,11 +59,3 @@ async def populate_temp_db(db: AsyncSession):
 
         await db.commit()
     return JSONResponse(content={"message": "Temperature entries updated successfully"})
-
-
-#
-# async def get_city_temp_detail(db: AsyncSession, city_id: int):
-#     query = select(models.DbTemperature).filter(models.DbTemperature.city_id == city_id)
-#     result = await db.execute(query)
-#     city = result.scalars().first()
-#     return [city] if city else []
