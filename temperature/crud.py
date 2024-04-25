@@ -10,7 +10,10 @@ from temperature.utils import create_temp_entries
 from fastapi.responses import JSONResponse
 
 
-async def get_temp_list(db: AsyncSession, city_id: int | None = None):
+async def get_temp_list(
+    db: AsyncSession, city_id: int | None = None
+) -> list[temperature_models.DbTemperature]:
+
     query = select(temperature_models.DbTemperature)
     if city_id is not None:
         query = query.filter(temperature_models.DbTemperature.city_id == city_id)
@@ -19,12 +22,15 @@ async def get_temp_list(db: AsyncSession, city_id: int | None = None):
     return temp_list.scalars().all()
 
 
-async def get_temp_detail(db: AsyncSession, temperature_id: int):
+async def get_temp_detail(
+    db: AsyncSession, temperature_id: int
+) -> temperature_models.DbTemperature:
+
     query = select(temperature_models.DbTemperature).filter(
         temperature_models.DbTemperature.id == temperature_id
     )
     result = await db.execute(query)
-    temp = result.scalars().first()
+    temp = result.scalar_one_or_none()
     if temp:
         return temp
     raise HTTPException(
@@ -33,7 +39,7 @@ async def get_temp_detail(db: AsyncSession, temperature_id: int):
     )
 
 
-async def populate_temp_db(db: AsyncSession):
+async def populate_temp_db(db: AsyncSession) -> JSONResponse:
     async with httpx.AsyncClient() as client:
         query = select(city_models.DbCity)
         city_list = await db.execute(query)
@@ -58,4 +64,4 @@ async def populate_temp_db(db: AsyncSession):
                 db.add(temperature)
 
         await db.commit()
-    return JSONResponse(content={"message": "Temperature entries updated successfully"})
+    return JSONResponse(content={"message": "Temperature entries updated."})

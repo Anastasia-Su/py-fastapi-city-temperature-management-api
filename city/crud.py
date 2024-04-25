@@ -1,28 +1,33 @@
-from http.client import HTTPResponse
-
+from typing import Any
 from fastapi import HTTPException, status, Response
 from sqlalchemy import select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from city import models, schemas
-from temperature.utils import create_temp_entries
 
 
-async def get_city_list(db: AsyncSession):
+async def get_city_list(db: AsyncSession) -> list[models.DbCity]:
     query = select(models.DbCity)
     city_list = await db.execute(query)
 
     return city_list.scalars().all()
 
 
-async def get_city_detail(db: AsyncSession, city_id: int):
+async def get_city_detail(db: AsyncSession, city_id: int) -> models.DbCity:
     query = select(models.DbCity).filter(models.DbCity.id == city_id)
     result = await db.execute(query)
-    city = result.scalars().first()
-    return [city] if city else []
+    city = result.scalar_one_or_none()
+    if city:
+        return city
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"City with id {city_id} not found",
+    )
 
 
-async def create_city(db: AsyncSession, city_create: schemas.CityCreate):
+async def create_city(
+    db: AsyncSession, city_create: schemas.CityCreate
+) -> dict[str, Any]:
     query = insert(models.DbCity).values(
         name=city_create.name,
         additional_info=city_create.additional_info,
@@ -34,7 +39,9 @@ async def create_city(db: AsyncSession, city_create: schemas.CityCreate):
     return resp
 
 
-async def update_city(db: AsyncSession, city_id: int, city_update: schemas.CityCreate):
+async def update_city(
+    db: AsyncSession, city_id: int, city_update: schemas.CityCreate
+) -> schemas.CityCreate:
     city = await db.get(models.DbCity, city_id)
 
     if city:
@@ -56,7 +63,7 @@ async def update_city(db: AsyncSession, city_id: int, city_update: schemas.CityC
     )
 
 
-async def delete_city(db: AsyncSession, city_id: int):
+async def delete_city(db: AsyncSession, city_id: int) -> Response:
     city = await db.get(models.DbCity, city_id)
 
     if city:

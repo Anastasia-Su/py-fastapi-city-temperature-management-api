@@ -1,13 +1,18 @@
-from datetime import datetime
-import httpx
 import os
+from datetime import datetime
+from httpx import AsyncClient
+
+from temperature import models as temperature_models
+from city import models as city_models
 from dotenv import load_dotenv
-from temperature import models
 
 load_dotenv()
 
 
-async def create_temp_entries(city, client):
+async def create_temp_entries(
+    city: city_models.DbCity, client: AsyncClient
+) -> temperature_models.DbTemperature:
+
     base_url = os.environ.get("BASE_URL")
     api_key = os.environ.get("API_KEY")
 
@@ -17,12 +22,11 @@ async def create_temp_entries(city, client):
 
     if response.status_code == 200:
         weather_data = response.json()
-        print("wdata", weather_data)
 
         current = weather_data.get("current")
         formatted_date = datetime.strptime(current["last_updated"], "%Y-%m-%d %H:%M")
 
-        temperature_entry = models.DbTemperature(
+        temperature_entry = temperature_models.DbTemperature(
             city_id=city.id, date_time=formatted_date, temperature=current["temp_c"]
         )
 
