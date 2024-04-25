@@ -5,11 +5,13 @@ from sqlalchemy import select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from city import models, schemas
+from temperature.utils import create_temp_entries
 
 
 async def get_city_list(db: AsyncSession):
     query = select(models.DbCity)
     city_list = await db.execute(query)
+
     return city_list.scalars().all()
 
 
