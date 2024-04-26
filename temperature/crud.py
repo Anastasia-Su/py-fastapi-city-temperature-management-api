@@ -16,9 +16,12 @@ async def get_temp_list(
 
     query = select(temperature_models.DbTemperature)
     if city_id is not None:
-        query = query.filter(temperature_models.DbTemperature.city_id == city_id)
+        query = query.filter(
+            temperature_models.DbTemperature.city_id == city_id
+        )
 
     temp_list = await db.execute(query)
+
     return temp_list.scalars().all()
 
 
@@ -31,8 +34,10 @@ async def get_temp_detail(
     )
     result = await db.execute(query)
     temp = result.scalar_one_or_none()
+
     if temp:
         return temp
+
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"Temperature with id {temperature_id} not found",
@@ -45,23 +50,42 @@ async def populate_temp_db(db: AsyncSession) -> JSONResponse:
         city_list = await db.execute(query)
         cities = city_list.scalars().all()
 
+        response_content = {
+            "message": "Temperature entries updated.",
+            "errors": [],
+        }
+
         for city in cities:
-            temperature = await create_temp_entries(city=city, client=client)
-
-            existing_entry = (
-                await db.execute(
-                    select(temperature_models.DbTemperature).filter(
-                        temperature_models.DbTemperature.city_id == city.id
-                    )
+            try:
+                temperature = await create_temp_entries(
+                    city=city, client=client
                 )
-            ).scalar_one_or_none()
+                if temperature:
+                    existing_entry = (
+                        await db.execute(
+                            select(temperature_models.DbTemperature).filter(
+                                temperature_models.DbTemperature.city_id
+                                == city.id
+                            )
+                        )
+                    ).scalar_one_or_none()
 
-            if existing_entry:
-                existing_entry.date_time = temperature.date_time
-                existing_entry.temperature = temperature.temperature
-
-            else:
-                db.add(temperature)
+                    if existing_entry:
+                        existing_entry.date_time = temperature.date_time
+                        existing_entry.temperature = temperature.temperature
+                    else:
+                        db.add(temperature)
+                else:
+                    response_content["errors"].append(
+                        {
+                            "city": city.name,
+                            "error": "Temperature data not found",
+                        }
+                    )
+            except Exception as e:
+                response_content["errors"].append(
+                    {"city": city.name, "error": str(e)}
+                )
 
         await db.commit()
-    return JSONResponse(content={"message": "Temperature entries updated."})
+        return JSONResponse(content=response_content)

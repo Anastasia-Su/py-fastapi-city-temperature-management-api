@@ -11,7 +11,9 @@ router = APIRouter()
 
 
 @router.get("/cities/", response_model=list[schemas.City])
-async def read_city_list_router(db: AsyncSession = Depends(get_db)) -> list[DbCity]:
+async def read_city_list_router(
+    db: AsyncSession = Depends(get_db),
+) -> list[DbCity]:
 
     return await crud.get_city_list(db=db)
 
@@ -48,6 +50,5 @@ async def delete_city_router(
     city_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    city = await crud.get_city_detail(db, city_id)
-    print("cty", city)
+
     return await crud.delete_city(city_id=city_id, db=db)

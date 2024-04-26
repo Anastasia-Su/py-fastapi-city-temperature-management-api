@@ -14,6 +14,7 @@ router = APIRouter()
 async def read_temp_list_router(
     city_id: Optional[int] = None, db: AsyncSession = Depends(get_db)
 ) -> list[DbTemperature]:
+
     if city_id is not None:
         return await crud.get_temp_list(db=db, city_id=city_id)
     else:
@@ -24,9 +25,13 @@ async def read_temp_list_router(
 async def read_temp_detail_router(
     temperature_id: int, db: AsyncSession = Depends(get_db)
 ) -> DbTemperature:
+
     return await crud.get_temp_detail(temperature_id=temperature_id, db=db)
 
 
 @router.post("/temperatures/update", response_model=schemas.TempCreate)
-async def read_temp_list_router(db: AsyncSession = Depends(get_db)) -> JSONResponse:
+async def populate_temp_db_router(
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+
     return await crud.populate_temp_db(db=db)
